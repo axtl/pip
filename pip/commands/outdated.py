@@ -28,6 +28,12 @@ class OutdatedCommand(Command):
             action='store_true',
             default=False,
             help='Only report local packages if inside a virtualenv')
+        self.parser.add_option(
+            '-p', '--pipe-only',
+            dest='pipe',
+            action='store_true',
+            default=False,
+            help='Output list in format suitable to be piped (i.e. to xargs)')
 
     def run(self, options, args):
 
@@ -37,15 +43,19 @@ class OutdatedCommand(Command):
 
         index_url = options.index
         local_only = options.local
+        pipe_only = options.pipe
 
-        logger.notify('Searching for outdated packages, please wait...')
-        outdated = get_outdated_distributions(index_url, local_only)
+        if not pipe_only:
+            logger.notify('Searching for outdated packages, please wait...')
+        outdated = get_outdated_distributions(index_url, local_only, pipe_only)
 
-        if not outdated:
+        if pipe_only:
+            sys.stdout.write(' '.join([entry['name'] for entry in outdated]))
+        elif not outdated:
             logger.notify('All packages are up to date.')
 
 
-def get_outdated_distributions(index_url, local_only=True):
+def get_outdated_distributions(index_url, local_only=True, pipe_only=False):
     """Get the list of installed packages that have updates available."""
     dists = get_installed_distributions(local_only)
     installed_packages = sorted([d.project_name for d in dists])
@@ -66,8 +76,9 @@ def get_outdated_distributions(index_url, local_only=True):
                     latest_pypi = highest_version(hit['versions'])
                     if compare_versions(dist.version, latest_pypi) == -1:
                         outdated_packages.append(hit)
-                        logger.notify('%s %s (%s)' % (name, dist.version,
-                            latest_pypi))
+                        if not pipe_only:
+                            logger.notify('%s %s (%s)' % (name, dist.version,
+                                latest_pypi))
             except UnicodeEncodeError:
                 pass
 
