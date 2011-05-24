@@ -1,13 +1,31 @@
 News / Changelog
 ================
 
-HEAD
-----
+Next release (1.1) schedule
+---------------------------
+
+Beta release mid-July 2011, final release early August.
+
+develop (unreleased)
+--------------------
+
+* Removed ``-E`` option and ``PIP_RESPECT_VIRTUALENV``; both use a
+  restart-in-venv mechanism that's broken, and neither one is useful since
+  every virtualenv now has pip inside it.
+
+1.0.1 (2011-04-30)
+------------------
 
 * Start to use git-flow.
+* Fixed issue #274 - `find_command` should not raise AttributeError
+* Fixed issue #273 - respect Content-Disposition header. Thanks Bradley Ayers.
+* Fixed issue #233 - pathext handling on Windows.
+* Fixed issue #252 - svn+svn protocol.
+* Fixed issue #44 - multiple CLI searches.
+* Fixed issue #266 - current working directory when running setup.py clean.
 
-1.0
----
+1.0 (2011-04-04)
+----------------
 
 * Added Python 3 support! Huge thanks to Vinay Sajip, Vitaly Babiy, Kelsey
   Hightower, and Alex Gronholm, among others.
@@ -21,7 +39,7 @@ HEAD
   python-setuptools package (workaround until fixed in Debian and Ubuntu).
 
 * Added `get-pip.py <https://github.com/pypa/pip/raw/master/contrib/get-pip.py>`_
-  installer. Simple download and execute it, using the Python interpreter of
+  installer. Simply download and execute it, using the Python interpreter of
   your choice::
 
     $ curl -O https://github.com/pypa/pip/raw/master/contrib/get-pip.py

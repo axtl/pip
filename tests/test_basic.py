@@ -6,13 +6,17 @@ import sys
 from os.path import abspath, join, curdir, pardir
 
 from nose import SkipTest
+from nose.tools import assert_raises
+from mock import Mock, patch
 
-from pip.util import rmtree
+from pip.util import rmtree, find_command
+from pip.exceptions import BadCommand
 
 from tests.test_pip import (here, reset_env, run_pip, pyversion, mkdir,
                             src_folder, write_file)
 from tests.local_repos import local_checkout
 from tests.path import Path
+
 
 def test_correct_pip_version():
     """
@@ -385,6 +389,7 @@ def test_install_subversion_usersite_editable_with_setuptools_fails():
                      expect_error=True)
     assert '--user --editable not supported with setuptools, use distribute' in result.stdout
 
+
 def test_install_pardir():
     """
     Test installing parent directory ('..').
@@ -415,6 +420,7 @@ def test_install_with_pax_header():
     reset_env()
     run_from = abspath(join(here, 'packages'))
     run_pip('install', 'paxpkg.tar.bz2', cwd=run_from)
+
 
 def test_install_using_install_option_and_editable():
     """
@@ -499,6 +505,7 @@ def test_install_folder_using_relative_path():
     egg_folder = env.site_packages / 'mock-100.1-py%s.egg-info' % pyversion
     assert egg_folder in result.files_created, str(result)
 
+
 def test_install_package_which_contains_dev_in_name():
     """
     Test installing package from pypi which contains 'dev' in name
@@ -510,6 +517,7 @@ def test_install_package_which_contains_dev_in_name():
     assert devserver_folder in result.files_created, str(result.stdout)
     assert egg_info_folder in result.files_created, str(result)
 
+
 def test_find_command_folder_in_path():
     """
     If a folder named e.g. 'git' is in PATH, and find_command is looking for
@@ -517,10 +525,79 @@ def test_find_command_folder_in_path():
     looking.
     """
     env = reset_env()
-    mkdir('path_one'); path_one = env.scratch_path/'path_one'
+    mkdir('path_one')
+    path_one = env.scratch_path/'path_one'
     mkdir(path_one/'foo')
-    mkdir('path_two'); path_two = env.scratch_path/'path_two'
+    mkdir('path_two')
+    path_two = env.scratch_path/'path_two'
     write_file(path_two/'foo', '# nothing')
-    from pip.util import find_command
     found_path = find_command('foo', map(str, [path_one, path_two]))
     assert found_path == path_two/'foo'
+
+
+def test_does_not_find_command_because_there_is_no_path():
+    """
+    Test calling `pip.utils.find_command` when there is no PATH env variable
+    """
+    environ_before = os.environ
+    os.environ = {}
+    try:
+        try:
+            find_command('anycommand')
+        except BadCommand:
+            e = sys.exc_info()[1]
+            assert e.args == ("Cannot find command 'anycommand'",)
+        else:
+            raise AssertionError("`find_command` should raise `BadCommand`")
+    finally:
+        os.environ = environ_before
+
+
+@patch('pip.util.get_pathext')
+@patch('os.path.isfile')
+def test_find_command_trys_all_pathext(mock_isfile, getpath_mock):
+    """
+    If no pathext should check default list of extensions, if file does not
+    exist.
+    """
+    mock_isfile.return_value = False
+    # Patching os.pathsep failed on type checking
+    old_sep = os.pathsep
+    os.pathsep = ':'
+
+    getpath_mock.return_value = os.pathsep.join([".COM", ".EXE"])
+
+    paths = [os.path.join('path_one', f)  for f in ['foo.com', 'foo.exe', 'foo']]
+    expected = [((p,),) for p in paths]
+
+    try:
+        assert_raises(BadCommand, find_command, 'foo', 'path_one')
+        assert mock_isfile.call_args_list == expected, "Actual: %s\nExpected %s" % (mock_isfile.call_args_list, expected)
+        assert getpath_mock.called, "Should call get_pathext"
+    finally:
+        os.pathsep = old_sep
+
+
+@patch('pip.util.get_pathext')
+@patch('os.path.isfile')
+def test_find_command_trys_supplied_pathext(mock_isfile, getpath_mock):
+    """
+    If pathext supplied find_command should use all of its list of extensions to find file.
+    """
+    mock_isfile.return_value = False
+    # Patching os.pathsep failed on type checking
+    old_sep = os.pathsep
+    os.pathsep = ':'
+    getpath_mock.return_value = ".FOO"
+
+    pathext = os.pathsep.join([".RUN", ".CMD"])
+
+    paths = [os.path.join('path_one', f)  for f in ['foo.run', 'foo.cmd', 'foo']]
+    expected = [((p,),) for p in paths]
+
+    try:
+        assert_raises(BadCommand, find_command, 'foo', 'path_one', pathext)
+        assert mock_isfile.call_args_list == expected, "Actual: %s\nExpected %s" % (mock_isfile.call_args_list, expected)
+        assert not getpath_mock.called, "Should not call get_pathext"
+    finally:
+        os.pathsep = old_sep

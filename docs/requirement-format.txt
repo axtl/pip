@@ -24,6 +24,15 @@ The ``#egg=MyProject`` part is important, because while you can
 install simply given the svn location, the project name is useful in
 other places.
 
+You can also specify the egg name for a non-editable url. This is useful to
+point to HEAD locations on the local filesystem:
+
+    file:///path/to/your/lib/project#egg=MyProject
+
+or relative paths:
+
+    file:../../lib/project#egg=MyProject
+
 If you need to give pip (and by association easy_install) hints
 about where to find a package, you can use the ``-f``
 (``--find-links``) option, like::
@@ -95,12 +104,13 @@ Bazaar
 ~~~~~~
 
 Pip supports Bazaar using the ``bzr+http``, ``bzr+https``, ``bzr+ssh``,
-``bzr+sftp`` and ``bzr+ftp`` schemes::
+``bzr+sftp``, ``bzr+ftp`` and ``bzr+lp`` schemes::
 
     -e bzr+http://bzr.myproject.org/MyProject/trunk/#egg=MyProject
     -e bzr+sftp://user@myproject.org/MyProject/trunk/#egg=MyProject
     -e bzr+ssh://user@myproject.org/MyProject/trunk/#egg=MyProject
     -e bzr+ftp://user@myproject.org/MyProject/trunk/#egg=MyProject
+    -e bzr+lp:MyProject#egg=MyProject
 
 Tags or revisions can be installed like this::
 
